@@ -26,7 +26,9 @@ jobs:
           import os
           from huggingface_hub import HfApi
 
-          api = HfApi(token=os.environ["HF_TOKEN"])
+          api = HfApi(
+              token=os.environ["HF_TOKEN"]
+          )
 
           api.upload_file(
               path_or_fileobj="tourism_project/data/tourism.csv",
@@ -57,34 +59,68 @@ jobs:
           from pathlib import Path
           import pandas as pd
           import joblib
+
           from sklearn.compose import ColumnTransformer
           from sklearn.pipeline import Pipeline
           from sklearn.impute import SimpleImputer
           from sklearn.preprocessing import OneHotEncoder, StandardScaler
           from sklearn.model_selection import train_test_split
 
-          DATA_FILE = Path("tourism_project/data/tourism.csv")
-          ARTIFACT_DIR = Path("tourism_project/artifacts")
+          DATA_FILE = Path(
+              "tourism_project/data/tourism.csv"
+          )
 
-          ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+          ARTIFACT_DIR = Path(
+              "tourism_project/artifacts"
+          )
+
+          ARTIFACT_DIR.mkdir(
+              parents=True,
+              exist_ok=True
+          )
 
           data = pd.read_csv(DATA_FILE)
 
-          print("Original dataset shape:", data.shape)
-
-          columns_to_drop = ["CustomerID", "Unnamed: 0"]
-
-          data = data.drop(
-              columns=[c for c in columns_to_drop if c in data.columns]
+          print(
+              "Original dataset shape:",
+              data.shape
           )
 
-          print("Duplicate rows found:", data.duplicated().sum())
+          columns_to_drop = [
+              "CustomerID",
+              "Unnamed: 0"
+          ]
 
-          data = data.drop_duplicates().reset_index(drop=True)
+          data = data.drop(
+              columns=[
+                  col
+                  for col in columns_to_drop
+                  if col in data.columns
+              ]
+          )
+
+          duplicate_count = data.duplicated().sum()
+
+          print(
+              "Duplicate rows found:",
+              duplicate_count
+          )
+
+          data = data.drop_duplicates().reset_index(
+              drop=True
+          )
+
+          print(
+              "Dataset shape after cleaning:",
+              data.shape
+          )
 
           target_column = "ProdTaken"
 
-          X = data.drop(columns=[target_column])
+          X = data.drop(
+              columns=[target_column]
+          )
+
           y = data[target_column]
 
           numerical_features = [
@@ -113,22 +149,48 @@ jobs:
 
           numerical_pipeline = Pipeline(
               steps=[
-                  ("imputer", SimpleImputer(strategy="median")),
-                  ("scaler", StandardScaler())
+                  (
+                      "imputer",
+                      SimpleImputer(
+                          strategy="median"
+                      )
+                  ),
+                  (
+                      "scaler",
+                      StandardScaler()
+                  )
               ]
           )
 
           categorical_pipeline = Pipeline(
               steps=[
-                  ("imputer", SimpleImputer(strategy="most_frequent")),
-                  ("onehot", OneHotEncoder(handle_unknown="ignore"))
+                  (
+                      "imputer",
+                      SimpleImputer(
+                          strategy="most_frequent"
+                      )
+                  ),
+                  (
+                      "onehot",
+                      OneHotEncoder(
+                          handle_unknown="ignore"
+                      )
+                  )
               ]
           )
 
           preprocessor = ColumnTransformer(
               transformers=[
-                  ("num", numerical_pipeline, numerical_features),
-                  ("cat", categorical_pipeline, categorical_features)
+                  (
+                      "num",
+                      numerical_pipeline,
+                      numerical_features
+                  ),
+                  (
+                      "cat",
+                      categorical_pipeline,
+                      categorical_features
+                  )
               ],
               remainder="drop"
           )
@@ -166,7 +228,9 @@ jobs:
               ARTIFACT_DIR / "preprocessor.pkl"
           )
 
-          print("Data preparation completed successfully.")
+          print(
+              "Data preparation completed successfully."
+          )
           PY
 
       - name: Upload Prepared Data
@@ -196,19 +260,24 @@ jobs:
 
       - name: Start MLflow Server
         run: |
-          nohup mlflow ui --host 0.0.0.0 --port 5000 &
+          nohup mlflow ui \
+            --host 0.0.0.0 \
+            --port 5000 &
           sleep 5
 
       - name: Model Building
         run: |
           python - <<'PY'
           from pathlib import Path
+
           import pandas as pd
           import joblib
           import mlflow
 
           from sklearn.pipeline import Pipeline
+
           from sklearn.linear_model import LogisticRegression
+
           from sklearn.ensemble import (
               RandomForestClassifier,
               GradientBoostingClassifier
@@ -222,8 +291,13 @@ jobs:
               roc_auc_score
           )
 
-          ARTIFACT_DIR = Path("tourism_project/artifacts")
-          MODEL_DIR = Path("tourism_project/models")
+          ARTIFACT_DIR = Path(
+              "tourism_project/artifacts"
+          )
+
+          MODEL_DIR = Path(
+              "tourism_project/models"
+          )
 
           MODEL_DIR.mkdir(
               parents=True,
@@ -280,8 +354,14 @@ jobs:
 
               model_pipeline = Pipeline(
                   steps=[
-                      ("preprocessor", preprocessor),
-                      ("model", estimator)
+                      (
+                          "preprocessor",
+                          preprocessor
+                      ),
+                      (
+                          "model",
+                          estimator
+                      )
                   ]
               )
 
@@ -298,9 +378,11 @@ jobs:
                       X_test
                   )
 
-                  probabilities = model_pipeline.predict_proba(
-                      X_test
-                  )[:, 1]
+                  probabilities = (
+                      model_pipeline.predict_proba(
+                          X_test
+                      )[:, 1]
+                  )
 
                   accuracy = accuracy_score(
                       y_test,
@@ -330,14 +412,15 @@ jobs:
                       probabilities
                   )
 
-                  for name, value in {
+                  metrics = {
                       "accuracy": accuracy,
                       "precision": precision,
                       "recall": recall,
                       "f1_score": f1,
                       "roc_auc": auc
-                  }.items():
+                  }
 
+                  for name, value in metrics.items():
                       mlflow.log_metric(
                           name,
                           value
@@ -403,12 +486,12 @@ jobs:
 
 
   deploy-hosting:
-    runs-on: ubuntu-latest
-
     needs:
       - model-traning
       - data-prep
       - register-dataset
+
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -426,7 +509,18 @@ jobs:
 
       - name: Prepare Deployment Files
         run: |
-          cp tourism_project/models/tourism_model.pkl tourism_project/deployment/tourism_model.pkl
+          cp \
+            tourism_project/models/tourism_model.pkl \
+            tourism_project/deployment/tourism_model.pkl
+
+      - name: Verify Deployment Files
+        run: |
+          test -f tourism_project/deployment/app.py
+          test -f tourism_project/deployment/requirements.txt
+          test -f tourism_project/deployment/Dockerfile
+          test -f tourism_project/deployment/tourism_model.pkl
+
+          echo "All deployment files are present."
 
       - name: Push files to Frontend Hugging Face Space
         env:
@@ -437,6 +531,21 @@ jobs:
           import os
           from pathlib import Path
           from huggingface_hub import HfApi
+
+          space_repo = os.environ.get(
+              "HF_SPACE_REPO",
+              ""
+          ).strip()
+
+          if not space_repo:
+              raise ValueError(
+                  "HF_SPACE_REPO GitHub Secret is empty or missing."
+              )
+
+          print(
+              "Deploying to Hugging Face Space:",
+              space_repo
+          )
 
           api = HfApi(
               token=os.environ["HF_TOKEN"]
@@ -465,7 +574,7 @@ jobs:
               api.upload_file(
                   path_or_fileobj=str(path),
                   path_in_repo=filename,
-                  repo_id=os.environ["HF_SPACE_REPO"],
+                  repo_id=space_repo,
                   repo_type="space"
               )
 
