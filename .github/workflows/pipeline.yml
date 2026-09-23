@@ -6,41 +6,51 @@ on:
       - main
 
 jobs:
+
   register-dataset:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas huggingface_hub
+
       - name: Upload Dataset to Hugging Face Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
         run: |
           python - <<'PY'
           import os
           from huggingface_hub import HfApi
+
           api = HfApi(token=os.environ["HF_TOKEN"])
+
           api.upload_file(
               path_or_fileobj="tourism_project/data/tourism.csv",
               path_in_repo="tourism.csv",
-              repo_id=os.environ["HF_DATASET_REPO"],
+              repo_id="urgay/wellness-tourism-data",
               repo_type="dataset"
           )
+
           print("Dataset uploaded successfully.")
           PY
+
 
   data-prep:
     needs: register-dataset
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas scikit-learn joblib
+
       - name: Run Data Preparation
         run: |
           python - <<'PY'
@@ -55,72 +65,140 @@ jobs:
 
           DATA_FILE = Path("tourism_project/data/tourism.csv")
           ARTIFACT_DIR = Path("tourism_project/artifacts")
+
           ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+
           data = pd.read_csv(DATA_FILE)
+
           print("Original dataset shape:", data.shape)
+
           columns_to_drop = ["CustomerID", "Unnamed: 0"]
-          data = data.drop(columns=[c for c in columns_to_drop if c in data.columns])
+
+          data = data.drop(
+              columns=[c for c in columns_to_drop if c in data.columns]
+          )
+
           print("Duplicate rows found:", data.duplicated().sum())
+
           data = data.drop_duplicates().reset_index(drop=True)
+
           target_column = "ProdTaken"
+
           X = data.drop(columns=[target_column])
           y = data[target_column]
+
           numerical_features = [
-              "Age", "CityTier", "DurationOfPitch", "NumberOfPersonVisiting",
-              "NumberOfFollowups", "PreferredPropertyStar", "NumberOfTrips",
-              "Passport", "PitchSatisfactionScore", "OwnCar",
-              "NumberOfChildrenVisiting", "MonthlyIncome"
+              "Age",
+              "CityTier",
+              "DurationOfPitch",
+              "NumberOfPersonVisiting",
+              "NumberOfFollowups",
+              "PreferredPropertyStar",
+              "NumberOfTrips",
+              "Passport",
+              "PitchSatisfactionScore",
+              "OwnCar",
+              "NumberOfChildrenVisiting",
+              "MonthlyIncome"
           ]
+
           categorical_features = [
-              "TypeofContact", "Occupation", "Gender", "ProductPitched",
-              "MaritalStatus", "Designation"
+              "TypeofContact",
+              "Occupation",
+              "Gender",
+              "ProductPitched",
+              "MaritalStatus",
+              "Designation"
           ]
-          numerical_pipeline = Pipeline(steps=[
-              ("imputer", SimpleImputer(strategy="median")),
-              ("scaler", StandardScaler())
-          ])
-          categorical_pipeline = Pipeline(steps=[
-              ("imputer", SimpleImputer(strategy="most_frequent")),
-              ("onehot", OneHotEncoder(handle_unknown="ignore"))
-          ])
-          preprocessor = ColumnTransformer(transformers=[
-              ("num", numerical_pipeline, numerical_features),
-              ("cat", categorical_pipeline, categorical_features)
-          ], remainder="drop")
-          X_train, X_test, y_train, y_test = train_test_split(
-              X, y, test_size=0.20, random_state=42, stratify=y
+
+          numerical_pipeline = Pipeline(
+              steps=[
+                  ("imputer", SimpleImputer(strategy="median")),
+                  ("scaler", StandardScaler())
+              ]
           )
-          X_train.to_csv(ARTIFACT_DIR / "X_train.csv", index=False)
-          X_test.to_csv(ARTIFACT_DIR / "X_test.csv", index=False)
-          y_train.to_csv(ARTIFACT_DIR / "y_train.csv", index=False)
-          y_test.to_csv(ARTIFACT_DIR / "y_test.csv", index=False)
-          joblib.dump(preprocessor, ARTIFACT_DIR / "preprocessor.pkl")
+
+          categorical_pipeline = Pipeline(
+              steps=[
+                  ("imputer", SimpleImputer(strategy="most_frequent")),
+                  ("onehot", OneHotEncoder(handle_unknown="ignore"))
+              ]
+          )
+
+          preprocessor = ColumnTransformer(
+              transformers=[
+                  ("num", numerical_pipeline, numerical_features),
+                  ("cat", categorical_pipeline, categorical_features)
+              ],
+              remainder="drop"
+          )
+
+          X_train, X_test, y_train, y_test = train_test_split(
+              X,
+              y,
+              test_size=0.20,
+              random_state=42,
+              stratify=y
+          )
+
+          X_train.to_csv(
+              ARTIFACT_DIR / "X_train.csv",
+              index=False
+          )
+
+          X_test.to_csv(
+              ARTIFACT_DIR / "X_test.csv",
+              index=False
+          )
+
+          y_train.to_csv(
+              ARTIFACT_DIR / "y_train.csv",
+              index=False
+          )
+
+          y_test.to_csv(
+              ARTIFACT_DIR / "y_test.csv",
+              index=False
+          )
+
+          joblib.dump(
+              preprocessor,
+              ARTIFACT_DIR / "preprocessor.pkl"
+          )
+
           print("Data preparation completed successfully.")
           PY
+
       - name: Upload Prepared Data
         uses: actions/upload-artifact@v4
         with:
           name: prepared-data
           path: tourism_project/artifacts/
 
+
   model-traning:
     needs: data-prep
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Download Prepared Data
         uses: actions/download-artifact@v4
         with:
           name: prepared-data
           path: tourism_project/artifacts/
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas scikit-learn joblib mlflow
+
       - name: Start MLflow Server
         run: |
           nohup mlflow ui --host 0.0.0.0 --port 5000 &
           sleep 5
+
       - name: Model Building
         run: |
           python - <<'PY'
@@ -128,80 +206,228 @@ jobs:
           import pandas as pd
           import joblib
           import mlflow
+
           from sklearn.pipeline import Pipeline
           from sklearn.linear_model import LogisticRegression
-          from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-          from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+          from sklearn.ensemble import (
+              RandomForestClassifier,
+              GradientBoostingClassifier
+          )
+
+          from sklearn.metrics import (
+              accuracy_score,
+              precision_score,
+              recall_score,
+              f1_score,
+              roc_auc_score
+          )
 
           ARTIFACT_DIR = Path("tourism_project/artifacts")
           MODEL_DIR = Path("tourism_project/models")
-          MODEL_DIR.mkdir(parents=True, exist_ok=True)
-          X_train = pd.read_csv(ARTIFACT_DIR / "X_train.csv")
-          X_test = pd.read_csv(ARTIFACT_DIR / "X_test.csv")
-          y_train = pd.read_csv(ARTIFACT_DIR / "y_train.csv").squeeze()
-          y_test = pd.read_csv(ARTIFACT_DIR / "y_test.csv").squeeze()
-          preprocessor = joblib.load(ARTIFACT_DIR / "preprocessor.pkl")
-          mlflow.set_experiment("Wellness Tourism Package Prediction")
+
+          MODEL_DIR.mkdir(
+              parents=True,
+              exist_ok=True
+          )
+
+          X_train = pd.read_csv(
+              ARTIFACT_DIR / "X_train.csv"
+          )
+
+          X_test = pd.read_csv(
+              ARTIFACT_DIR / "X_test.csv"
+          )
+
+          y_train = pd.read_csv(
+              ARTIFACT_DIR / "y_train.csv"
+          ).squeeze()
+
+          y_test = pd.read_csv(
+              ARTIFACT_DIR / "y_test.csv"
+          ).squeeze()
+
+          preprocessor = joblib.load(
+              ARTIFACT_DIR / "preprocessor.pkl"
+          )
+
+          mlflow.set_experiment(
+              "Wellness Tourism Package Prediction"
+          )
+
           models = {
-              "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
-              "Random Forest": RandomForestClassifier(n_estimators=200, random_state=42),
-              "Gradient Boosting": GradientBoostingClassifier(random_state=42)
+              "Logistic Regression":
+                  LogisticRegression(
+                      max_iter=1000,
+                      random_state=42
+                  ),
+
+              "Random Forest":
+                  RandomForestClassifier(
+                      n_estimators=200,
+                      random_state=42
+                  ),
+
+              "Gradient Boosting":
+                  GradientBoostingClassifier(
+                      random_state=42
+                  )
           }
+
           results = []
           trained_models = {}
+
           for model_name, estimator in models.items():
-              model_pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", estimator)])
-              with mlflow.start_run(run_name=model_name):
-                  model_pipeline.fit(X_train, y_train)
-                  predictions = model_pipeline.predict(X_test)
-                  probabilities = model_pipeline.predict_proba(X_test)[:, 1]
-                  accuracy = accuracy_score(y_test, predictions)
-                  precision = precision_score(y_test, predictions, zero_division=0)
-                  recall = recall_score(y_test, predictions, zero_division=0)
-                  f1 = f1_score(y_test, predictions, zero_division=0)
-                  auc = roc_auc_score(y_test, probabilities)
+
+              model_pipeline = Pipeline(
+                  steps=[
+                      ("preprocessor", preprocessor),
+                      ("model", estimator)
+                  ]
+              )
+
+              with mlflow.start_run(
+                  run_name=model_name
+              ):
+
+                  model_pipeline.fit(
+                      X_train,
+                      y_train
+                  )
+
+                  predictions = model_pipeline.predict(
+                      X_test
+                  )
+
+                  probabilities = model_pipeline.predict_proba(
+                      X_test
+                  )[:, 1]
+
+                  accuracy = accuracy_score(
+                      y_test,
+                      predictions
+                  )
+
+                  precision = precision_score(
+                      y_test,
+                      predictions,
+                      zero_division=0
+                  )
+
+                  recall = recall_score(
+                      y_test,
+                      predictions,
+                      zero_division=0
+                  )
+
+                  f1 = f1_score(
+                      y_test,
+                      predictions,
+                      zero_division=0
+                  )
+
+                  auc = roc_auc_score(
+                      y_test,
+                      probabilities
+                  )
+
                   for name, value in {
-                      "accuracy": accuracy, "precision": precision, "recall": recall,
-                      "f1_score": f1, "roc_auc": auc
+                      "accuracy": accuracy,
+                      "precision": precision,
+                      "recall": recall,
+                      "f1_score": f1,
+                      "roc_auc": auc
                   }.items():
-                      mlflow.log_metric(name, value)
+
+                      mlflow.log_metric(
+                          name,
+                          value
+                      )
+
                   results.append({
-                      "Model": model_name, "Accuracy": accuracy, "Precision": precision,
-                      "Recall": recall, "F1 Score": f1, "ROC-AUC": auc
+                      "Model": model_name,
+                      "Accuracy": accuracy,
+                      "Precision": precision,
+                      "Recall": recall,
+                      "F1 Score": f1,
+                      "ROC-AUC": auc
                   })
-                  trained_models[model_name] = model_pipeline
+
+                  trained_models[
+                      model_name
+                  ] = model_pipeline
+
           results_df = pd.DataFrame(results)
-          print(results_df.sort_values(by="ROC-AUC", ascending=False))
-          best_model_name = results_df.loc[results_df["ROC-AUC"].idxmax(), "Model"]
-          final_model = trained_models[best_model_name]
-          print("Selected model:", best_model_name)
-          MODEL_PATH = MODEL_DIR / "tourism_model.pkl"
-          joblib.dump(final_model, MODEL_PATH)
-          print("Final model saved:", MODEL_PATH)
+
+          print(
+              results_df.sort_values(
+                  by="ROC-AUC",
+                  ascending=False
+              )
+          )
+
+          best_model_name = results_df.loc[
+              results_df["ROC-AUC"].idxmax(),
+              "Model"
+          ]
+
+          final_model = trained_models[
+              best_model_name
+          ]
+
+          print(
+              "Selected model:",
+              best_model_name
+          )
+
+          MODEL_PATH = (
+              MODEL_DIR /
+              "tourism_model.pkl"
+          )
+
+          joblib.dump(
+              final_model,
+              MODEL_PATH
+          )
+
+          print(
+              "Final model saved:",
+              MODEL_PATH
+          )
           PY
+
       - name: Upload Trained Model
         uses: actions/upload-artifact@v4
         with:
           name: trained-model
           path: tourism_project/models/tourism_model.pkl
 
+
   deploy-hosting:
     runs-on: ubuntu-latest
-    needs: [model-traning, data-prep, register-dataset]
+
+    needs:
+      - model-traning
+      - data-prep
+      - register-dataset
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Download Trained Model
         uses: actions/download-artifact@v4
         with:
           name: trained-model
           path: tourism_project/models/
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install huggingface_hub
+
       - name: Prepare Deployment Files
         run: |
           cp tourism_project/models/tourism_model.pkl tourism_project/deployment/tourism_model.pkl
+
       - name: Push files to Frontend Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -211,19 +437,43 @@ jobs:
           import os
           from pathlib import Path
           from huggingface_hub import HfApi
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          deployment_dir = Path("tourism_project/deployment")
-          files = ["app.py", "requirements.txt", "Dockerfile", "tourism_model.pkl"]
+
+          api = HfApi(
+              token=os.environ["HF_TOKEN"]
+          )
+
+          deployment_dir = Path(
+              "tourism_project/deployment"
+          )
+
+          files = [
+              "app.py",
+              "requirements.txt",
+              "Dockerfile",
+              "tourism_model.pkl"
+          ]
+
           for filename in files:
+
               path = deployment_dir / filename
+
               if not path.exists():
-                  raise FileNotFoundError(f"Missing deployment file: {path}")
+                  raise FileNotFoundError(
+                      f"Missing deployment file: {path}"
+                  )
+
               api.upload_file(
                   path_or_fileobj=str(path),
                   path_in_repo=filename,
                   repo_id=os.environ["HF_SPACE_REPO"],
                   repo_type="space"
               )
-              print(f"Uploaded {filename}")
-          print("Deployment completed successfully.")
+
+              print(
+                  f"Uploaded {filename}"
+              )
+
+          print(
+              "Deployment completed successfully."
+          )
           PY
