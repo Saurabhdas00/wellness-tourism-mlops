@@ -1,0 +1,53 @@
+{
+    "original_shape": [
+        4128,
+        21
+    ],
+    "cleaned_shape": [
+        4128,
+        20
+    ],
+    "modeling_shape": [
+        4128,
+        19
+    ],
+    "training_shape": [
+        3302,
+        18
+    ],
+    "testing_shape": [
+        826,
+        18
+    ],
+    "processed_training_shape": [
+        3302,
+        34
+    ],
+    "processed_testing_shape": [
+        826,
+        34
+    ],
+    "numerical_features": [
+        "Age",
+        "CityTier",
+        "DurationOfPitch",
+        "NumberOfPersonVisiting",
+        "NumberOfFollowups",
+        "PreferredPropertyStar",
+        "NumberOfTrips",
+        "Passport",
+        "PitchSatisfactionScore",
+        "OwnCar",
+        "NumberOfChildrenVisiting",
+        "MonthlyIncome"
+    ],
+    "categorical_features": [
+        "TypeofContact",
+        "Occupation",
+        "Gender",
+        "ProductPitched",
+        "MaritalStatus",
+        "Designation"
+    ],
+    "random_state": 42
+}
