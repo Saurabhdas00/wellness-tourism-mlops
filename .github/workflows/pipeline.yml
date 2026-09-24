@@ -13,6 +13,7 @@ jobs:
   # ============================================================
   # 1. Register Dataset
   # ============================================================
+
   register-dataset:
     name: Register Dataset
     runs-on: ubuntu-latest
@@ -58,6 +59,7 @@ jobs:
   # ============================================================
   # 2. Data Preparation
   # ============================================================
+
   data-prep:
     name: Data Preparation
     needs: register-dataset
@@ -102,6 +104,7 @@ jobs:
   # ============================================================
   # 3. Model Training and MLflow
   # ============================================================
+
   model-training:
     name: Model Training and MLflow
     needs: data-prep
@@ -135,6 +138,11 @@ jobs:
           name: prepared-data
           path: tourism_project/data/pipeline_artifacts/
 
+      - name: Reset MLflow Tracking Database
+        run: |
+          rm -f tourism_project/model_building/mlflow.db
+          rm -rf tourism_project/model_building/mlruns
+
       - name: Train and Evaluate Model
         run: |
           python tourism_project/deployment/train_model.py
@@ -149,7 +157,7 @@ jobs:
           test -f tourism_project/model_building/baseline_results.csv
           test -f tourism_project/model_building/tuned_results.csv
           test -f tourism_project/model_building/confusion_matrix.json
-
+          test -d tourism_project/model_building/mlruns
           echo "All model artifacts created successfully."
 
       - name: Display Final Metrics
@@ -167,6 +175,7 @@ jobs:
             tourism_project/model_building/final_metrics.json
             tourism_project/model_building/model_info.json
             tourism_project/model_building/mlflow.db
+            tourism_project/model_building/mlruns/
             tourism_project/model_building/baseline_results.csv
             tourism_project/model_building/tuned_results.csv
             tourism_project/model_building/confusion_matrix.json
@@ -175,6 +184,7 @@ jobs:
   # ============================================================
   # 4. Deployment and Hosting Validation
   # ============================================================
+
   deploy-hosting:
     name: Deploy and Validate Hosting
     needs: model-training
@@ -223,7 +233,6 @@ jobs:
       - name: Validate Streamlit Application
         run: |
           python -m py_compile tourism_project/deployment/app.py
-
           echo "Streamlit application validation completed."
 
       - name: Commit Updated Model and Deployment Artifacts
