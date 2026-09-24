@@ -1,11 +1,14 @@
-
 import streamlit as st
 import pandas as pd
 import joblib
+from pathlib import Path
+
 
 # Load trained model
-MODEL_PATH = "tourism_model.pkl"
+MODEL_PATH = Path(__file__).resolve().parent / "tourism_model.pkl"
+
 model = joblib.load(MODEL_PATH)
+
 
 st.set_page_config(
     page_title="Wellness Tourism Package Prediction",
@@ -13,17 +16,22 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.title("Wellness Tourism Package Prediction")
+
 st.write(
     "Enter customer and interaction details to predict "
     "the likelihood of purchasing the Wellness Tourism Package."
 )
 
+
 st.subheader("Customer Details")
 
 col1, col2, col3 = st.columns(3)
 
+
 with col1:
+
     age = st.number_input(
         "Age",
         min_value=18,
@@ -46,7 +54,9 @@ with col1:
         ["Male", "Female"]
     )
 
+
 with col2:
+
     type_of_contact = st.selectbox(
         "Type of Contact",
         ["Self Enquiry", "Company Invited"]
@@ -69,7 +79,9 @@ with col2:
         ["Married", "Divorced", "Single"]
     )
 
+
 with col3:
+
     number_of_trips = st.number_input(
         "Number of Trips",
         min_value=0,
@@ -94,11 +106,14 @@ with col3:
         value=0
     )
 
+
 st.subheader("Interaction Details")
 
 col1, col2, col3 = st.columns(3)
 
+
 with col1:
+
     designation = st.selectbox(
         "Designation",
         [
@@ -116,7 +131,9 @@ with col1:
         value=25000
     )
 
+
 with col2:
+
     pitch_satisfaction_score = st.selectbox(
         "Pitch Satisfaction Score",
         [1, 2, 3, 4, 5]
@@ -133,7 +150,9 @@ with col2:
         ]
     )
 
+
 with col3:
+
     number_of_followups = st.number_input(
         "Number of Followups",
         min_value=0,
@@ -148,40 +167,65 @@ with col3:
         value=15
     )
 
+
 # Create input dataframe
 input_data = pd.DataFrame({
+
     "Age": [age],
+
     "TypeofContact": [type_of_contact],
+
     "CityTier": [city_tier],
+
     "Occupation": [occupation],
+
     "Gender": [gender],
+
     "NumberOfPersonVisiting": [number_of_person_visiting],
+
     "PreferredPropertyStar": [preferred_property_star],
+
     "MaritalStatus": [marital_status],
+
     "NumberOfTrips": [number_of_trips],
+
     "Passport": [passport],
+
     "OwnCar": [own_car],
+
     "NumberOfChildrenVisiting": [number_of_children_visiting],
+
     "Designation": [designation],
+
     "MonthlyIncome": [monthly_income],
+
     "PitchSatisfactionScore": [pitch_satisfaction_score],
+
     "ProductPitched": [product_pitched],
+
     "NumberOfFollowups": [number_of_followups],
+
     "DurationOfPitch": [duration_of_pitch]
+
 })
+
 
 if st.button("Predict", type="primary"):
 
     prediction = model.predict(input_data)[0]
+
     probability = model.predict_proba(input_data)[0][1]
 
     st.subheader("Prediction Result")
 
     if prediction == 1:
+
         st.success(
             "The customer is likely to purchase the Wellness Tourism Package."
         )
+
     else:
+
         st.info(
             "The customer is unlikely to purchase the Wellness Tourism Package."
         )
