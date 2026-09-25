@@ -1,0 +1,8 @@
+{
+    "model_name": "Random Forest",
+    "random_state": 42,
+    "input_features": 18,
+    "processed_features": 34,
+    "training_samples": 3302,
+    "testing_samples": 826
+}
