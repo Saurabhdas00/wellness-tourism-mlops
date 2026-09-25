@@ -1,7 +1,26 @@
 {
     "model_name": "Random Forest",
     "random_state": 42,
-    "input_features": 18,
+    "input_features": [
+        "Age",
+        "TypeofContact",
+        "CityTier",
+        "DurationOfPitch",
+        "Occupation",
+        "Gender",
+        "NumberOfPersonVisiting",
+        "NumberOfFollowups",
+        "ProductPitched",
+        "PreferredPropertyStar",
+        "MaritalStatus",
+        "NumberOfTrips",
+        "Passport",
+        "PitchSatisfactionScore",
+        "OwnCar",
+        "NumberOfChildrenVisiting",
+        "Designation",
+        "MonthlyIncome"
+    ],
     "processed_features": 34,
     "training_samples": 3302,
     "testing_samples": 826

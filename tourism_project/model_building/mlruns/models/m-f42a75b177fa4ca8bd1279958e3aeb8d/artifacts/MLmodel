@@ -1,0 +1,23 @@
+artifact_path: file:///home/runner/work/wellness-tourism-mlops/wellness-tourism-mlops/tourism_project/model_building/mlruns/models/m-f42a75b177fa4ca8bd1279958e3aeb8d/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.15
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+    skops_trusted_types: null
+mlflow_version: 3.16.1
+model_id: m-f42a75b177fa4ca8bd1279958e3aeb8d
+model_size_bytes: 925272
+model_uuid: m-f42a75b177fa4ca8bd1279958e3aeb8d
+prompts: null
+run_id: 3d0e6bda585948619520bb62eb32d93f
+utc_time_created: '2026-09-25 00:14:12.750241'
